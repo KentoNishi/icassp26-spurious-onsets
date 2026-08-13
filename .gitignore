@@ -3,6 +3,7 @@ __pycache__/
 .ruff_cache/
 .sources/
 .venv/
+figures/
 microphone.wav
 results.json
 runs/

@@ -30,6 +30,7 @@ git -C "$personaplex_source" checkout --detach "$personaplex_revision"
     "sphn>=0.2,<0.3" \
     "aiohttp>=3.10.5,<3.12" \
     "tqdm>=4.48" \
+    matplotlib \
     py7zr
 "$moshi_python" -m pip install --no-deps "$moshi_source/moshi"
 
