@@ -11,6 +11,8 @@ from matplotlib.lines import Line2D
 
 MOSHI = "#d62728"
 PERSONAPLEX = "#76b900"
+MOSHI_TRACE = "#e78ac3"
+PERSONAPLEX_TRACE = "#2ab7a9"
 GRID = "#dddddd"
 TEXT = "#333333"
 OUT = Path(__file__).parent / "figures"
@@ -26,7 +28,7 @@ def style(ax, *, grid_axis="both"):
     ax.set_axisbelow(True)
 
 
-def shades(color, count, hue_shift):
+def shades(color, count):
     hue, lightness, saturation = colorsys.rgb_to_hls(*to_rgb(color))
     return [
         colorsys.hls_to_rgb(
@@ -35,8 +37,8 @@ def shades(color, count, hue_shift):
             saturation,
         )
         for hue_offset, lightness_offset in zip(
-            np.linspace(hue_shift - 0.025, hue_shift + 0.025, count),
-            np.linspace(-0.18, 0.18, count),
+            np.linspace(-0.02, 0.02, count),
+            np.linspace(-0.07, 0.17, count),
         )
     ]
 
@@ -50,14 +52,14 @@ def incidence(onsets, horizon=300, runs=40):
 
 def mechanism(results):
     models = (
-        ("Moshi", MOSHI, -0.06, results[0]),
-        ("PersonaPlex", PERSONAPLEX, 0.06, results[1]),
+        ("Moshi", MOSHI, MOSHI_TRACE, results[0]),
+        ("PersonaPlex", PERSONAPLEX, PERSONAPLEX_TRACE, results[1]),
     )
     fig, axes = plt.subplots(1, 2, figsize=(6.2, 2.15))
     grid = np.linspace(0, 300, 1201)
     prepared = []
 
-    for name, color, hue_shift, result in models:
+    for name, color, trace_color, result in models:
         runs = result["baseline"]
         rate = result["frame_rate"]
         onsets = [
@@ -77,7 +79,7 @@ def mechanism(results):
             (
                 name,
                 color,
-                hue_shift,
+                trace_color,
                 rate,
                 x,
                 y,
@@ -93,7 +95,7 @@ def mechanism(results):
         (
             name,
             color,
-            hue_shift,
+            trace_color,
             rate,
             x,
             y,
@@ -111,7 +113,7 @@ def mechanism(results):
         ax.step(x, y, where="post", color=color, linewidth=2.7, zorder=4)
         ax.plot(grid, geometric, color=color, linewidth=2.0, linestyle=":", zorder=3)
         for trajectory, trajectory_color in zip(
-            trajectories, shades(color, len(trajectories), hue_shift)
+            trajectories, shades(trace_color, len(trajectories))
         ):
             positive = trajectory[trajectory > 0]
             probability_ax.plot(
