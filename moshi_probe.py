@@ -38,7 +38,6 @@ class Probe:
         self.lm_gen.top_k = 250
         self.lm_gen.top_k_text = 25
         self.device = device
-        self.pad_token = 0
         self.frame_size = int(self.mimi.sample_rate / self.mimi.frame_rate)
         self.zero = torch.zeros(1, 1, self.frame_size, device=device)
         self.needed = self.lm.num_codebooks - self.lm.dep_q - 1

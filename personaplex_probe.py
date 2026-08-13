@@ -65,7 +65,6 @@ class Probe:
         self.frame_size = int(self.mimi.sample_rate / self.mimi.frame_rate)
         self.zero = torch.zeros(1, 1, self.frame_size, device=self.device)
         self.needed = self.lm.num_codebooks - lm_module.AUDIO_TOKENS_PER_STREAM - 1
-        self.pad_token = self.lm_gen.zero_text_code
         self.mimi.streaming_forever(1)
         self.lm_gen.streaming_forever(1)
 

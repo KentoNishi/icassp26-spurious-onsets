@@ -9,7 +9,6 @@ import torch
 FRAME_RATE = 12.5
 SESSION_FRAMES = int(300 * FRAME_RATE)
 NOISE_DBFS = -96.0
-PROTOCOL = 5
 
 
 def seed(value):
@@ -297,7 +296,6 @@ def response(
     audio,
     counterfactual,
     gap_frames,
-    boundary=None,
     speech_frames=None,
 ):
     prepare_pair(observed, shadow, prompt, prompt, gap_frames)
@@ -326,7 +324,6 @@ def response(
         "text": observed.text(tokens),
         "onset_frame": onset,
         "score": score,
-        "preserved": score is not None and (boundary is None or score > boundary),
     }
 
 
@@ -376,11 +373,6 @@ def run(
     calibration = (
         json.loads(calibration_path.read_text()) if calibration_path.exists() else {}
     )
-    if (
-        calibration.get("noise_dbfs") != NOISE_DBFS
-        or calibration.get("protocol") != PROTOCOL
-    ):
-        calibration = {}
     calibration_idle = calibration.get("conditional_idle", [])
     calibration_responses = calibration.get("speech", [])
 
@@ -388,7 +380,6 @@ def run(
         calibration_path.write_text(
             json.dumps(
                 {
-                    "protocol": PROTOCOL,
                     "noise_dbfs": NOISE_DBFS,
                     "conditional_idle": calibration_idle,
                     "speech": calibration_responses,
@@ -444,10 +435,6 @@ def run(
     boundaries = decision_boundaries(idle_scores, speech_scores)
     result_path = output / "results.json"
     previous = json.loads(result_path.read_text()) if result_path.exists() else {}
-    same_protocol = (
-        previous.get("noise_dbfs") == NOISE_DBFS
-        and previous.get("protocol") == PROTOCOL
-    )
     result = {
         "model": probe.metadata,
         "greeting": greeting,
@@ -457,19 +444,14 @@ def run(
         "frame_rate": FRAME_RATE,
         "session_s": frames / FRAME_RATE,
         "gap_frames": gap_frames,
-        "protocol": PROTOCOL,
         "noise_dbfs": NOISE_DBFS,
         "boundaries": boundaries,
         "calibration_idle": calibration_idle,
         "calibration_responses": calibration_responses,
-        "baseline": previous.get("baseline", []) if same_protocol else [],
-        "microphone_rollouts": (
-            previous.get("microphone_rollouts", []) if same_protocol else []
-        ),
+        "baseline": previous.get("baseline", []),
+        "microphone_rollouts": previous.get("microphone_rollouts", []),
         "microphone": {},
-        "microphone_responses": (
-            previous.get("microphone_responses", []) if same_protocol else []
-        ),
+        "microphone_responses": previous.get("microphone_responses", []),
     }
     result["microphone"] = threshold_results(result["microphone_rollouts"], boundaries)
     save(output, result)
