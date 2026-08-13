@@ -5,18 +5,19 @@ source "$(dirname "$0")/config"
 cd "$root"
 
 "$moshi_python" - <<'PY'
-import io
+import tempfile
 import urllib.request
+from pathlib import Path
 
 import py7zr
 
 url = "https://github.com/SiliconLabs/mltk_assets/raw/master/datasets/brd2601_background_audio.7z"
-with urllib.request.urlopen(url) as response:
-    archive = io.BytesIO(response.read())
-with py7zr.SevenZipFile(archive) as source:
-    source.extract(path=".sources/noise")
-with open(".sources/noise/brd2601_background_audio.wav", "rb") as source:
-    data = source.read()
-with open("microphone.wav", "wb") as output:
-    output.write(data)
+with tempfile.TemporaryDirectory() as directory:
+    archive = Path(directory) / "noise.7z"
+    urllib.request.urlretrieve(url, archive)
+    with py7zr.SevenZipFile(archive) as source:
+        source.extract(path=directory, targets=["brd2601_background_audio.wav"])
+    Path("microphone.wav").write_bytes(
+        (Path(directory) / "brd2601_background_audio.wav").read_bytes()
+    )
 PY
