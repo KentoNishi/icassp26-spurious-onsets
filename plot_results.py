@@ -21,7 +21,8 @@ def style(ax, *, grid_axis="both"):
         spine.set_color(TEXT)
         spine.set_linewidth(1.25)
     ax.tick_params(colors=TEXT, labelsize=10, width=1.15, length=4)
-    ax.grid(axis=grid_axis, color=GRID, linewidth=0.85)
+    if grid_axis:
+        ax.grid(axis=grid_axis, color=GRID, linewidth=0.85)
     ax.set_axisbelow(True)
 
 
@@ -128,7 +129,7 @@ def mechanism(results):
         ax.set_title(name, fontsize=12, color=TEXT, pad=3)
         for tick_label in ax.get_xticklabels():
             tick_label.set_horizontalalignment("right")
-        style(ax)
+        style(ax, grid_axis=None)
 
         probability_ax.set_yscale("log")
         probability_ax.set_ylim(probability_min, probability_max)
@@ -144,6 +145,17 @@ def mechanism(results):
         probability_ax.set_ylabel(
             "onset probability", fontsize=10, color=TEXT, labelpad=1
         )
+        for tick in ax.get_xticks():
+            probability_ax.axvline(tick, color=GRID, linewidth=0.85, zorder=0)
+        for tick in ax.get_yticks():
+            probability_ax.plot(
+                [0, 1],
+                [tick / incidence_max] * 2,
+                color=GRID,
+                linewidth=0.85,
+                transform=probability_ax.transAxes,
+                zorder=0,
+            )
 
     fig.subplots_adjust(left=0.10, right=0.87, bottom=0.25, top=0.85, wspace=0.72)
     fig.savefig(OUT / "mechanism.pdf")
