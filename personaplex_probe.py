@@ -66,8 +66,6 @@ class Probe:
         self.zero = torch.zeros(1, 1, self.frame_size, device=self.device)
         self.needed = self.lm.num_codebooks - lm_module.AUDIO_TOKENS_PER_STREAM - 1
         self.pad_token = self.lm_gen.zero_text_code
-        self.blocked = False
-        self.proposal = None
         self.mimi.streaming_forever(1)
         self.lm_gen.streaming_forever(1)
 
@@ -77,38 +75,24 @@ class Probe:
         self.lm_gen.step_system_prompts(self.mimi)
         self.mimi.reset_streaming()
 
-    def step(self, pcm=None, forced=None, block=False, paired=False, condition=False):
-        self.blocked = False
-        self.proposal = None
+    def step(self, pcm=None, forced=None, paired=False):
         self.logits = None
         sample_token = lm_module.sample_token
         first = True
 
         def sample(logits, use_sampling, temperature, top_k):
             nonlocal first
-            cpu_state = torch.random.get_rng_state()
-            cuda_state = torch.cuda.get_rng_state(self.device)
             if first:
                 self.logits = logits.clone()
-                if condition:
-                    logits[..., 4:] = -torch.inf
-            token = sample_token(logits, use_sampling, temperature, top_k)
-            if first:
                 first = False
-                self.proposal = int(token.item())
-                self.blocked = block and int(token.item()) >= 4
-                if self.blocked:
-                    torch.random.set_rng_state(cpu_state)
-                    torch.cuda.set_rng_state(cuda_state, self.device)
-                if self.blocked:
-                    return torch.full_like(token, self.pad_token)
+            token = sample_token(logits, use_sampling, temperature, top_k)
             return token
 
         codes = self.mimi.encode(self.zero if pcm is None else pcm)
         text_token = None
         if forced is not None:
             text_token = torch.tensor([forced], device=self.device)
-        if block or paired or condition:
+        if paired:
             lm_module.sample_token = sample
         try:
             _, logits = self.lm_gen.step(codes[:, : self.needed], text_token=text_token)

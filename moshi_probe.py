@@ -1,7 +1,6 @@
 import torch
 
 from moshi.models import LMGen, loaders
-from moshi.utils.sampling import sample_token
 
 
 def distribution(logits, temperature, top_k):
@@ -28,11 +27,6 @@ class Probe:
         self.logits = None
         self.sample = None
         self.forced = None
-        self.block = False
-        self.paired = False
-        self.condition = False
-        self.blocked = False
-        self.proposal = None
         self.lm_gen = LMGen(
             self.lm,
             on_text_logits_hook=self.logits_hook,
@@ -53,48 +47,20 @@ class Probe:
 
     def logits_hook(self, logits):
         self.logits = logits.clone()
-        self.blocked = False
         if self.forced is not None:
             logits.fill_(-torch.inf)
             logits[..., self.forced] = 0
-        elif self.block or self.paired:
-            cpu_state = torch.random.get_rng_state()
-            cuda_state = torch.cuda.get_rng_state(self.device)
-            token = int(
-                sample_token(
-                    logits.float(),
-                    True,
-                    self.lm_gen.temp_text,
-                    self.lm_gen.top_k_text,
-                ).item()
-            )
-            self.proposal = token
-            torch.random.set_rng_state(cpu_state)
-            torch.cuda.set_rng_state(cuda_state, self.device)
-            self.blocked = self.block and token >= 4
-            if self.blocked:
-                logits.fill_(-torch.inf)
-                logits[..., 0] = 0
-        elif self.condition:
-            logits[..., 4:] = -torch.inf
 
     def text_hook(self, token):
         self.sample = int(token.item())
 
-    def step(self, pcm=None, forced=None, block=False, paired=False, condition=False):
+    def step(self, pcm=None, forced=None, paired=False):
         self.logits = None
         self.sample = None
-        self.proposal = None
         self.forced = forced
-        self.block = block
-        self.paired = paired
-        self.condition = condition
         codes = self.mimi.encode(self.zero if pcm is None else pcm)
         self.lm_gen.step(codes[:, : self.needed])
         self.forced = None
-        self.block = False
-        self.paired = False
-        self.condition = False
         if self.logits is None:
             return self.sample, None
         probabilities = distribution(
