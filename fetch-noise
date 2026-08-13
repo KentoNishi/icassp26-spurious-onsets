@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+source "$(dirname "$0")/config"
+cd "$root"
+
+"$moshi_python" - <<'PY'
+import io
+import urllib.request
+
+import py7zr
+
+url = "https://github.com/SiliconLabs/mltk_assets/raw/master/datasets/brd2601_background_audio.7z"
+with urllib.request.urlopen(url) as response:
+    archive = io.BytesIO(response.read())
+with py7zr.SevenZipFile(archive) as source:
+    source.extract(path=".sources/noise")
+with open(".sources/noise/brd2601_background_audio.wav", "rb") as source:
+    data = source.read()
+with open("microphone.wav", "wb") as output:
+    output.write(data)
+PY

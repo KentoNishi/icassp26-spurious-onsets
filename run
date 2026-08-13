@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+source "$(dirname "$0")/config"
+cd "$root"
+mkdir -p runs/moshi runs/personaplex
+
+CUDA_VISIBLE_DEVICES=$moshi_gpu "$moshi_python" experiment.py moshi \
+    >runs/moshi/run.log 2>&1 &
+moshi_pid=$!
+CUDA_VISIBLE_DEVICES=$personaplex_gpu "$personaplex_python" experiment.py personaplex \
+    >runs/personaplex/run.log 2>&1 &
+personaplex_pid=$!
+wait "$moshi_pid"
+wait "$personaplex_pid"
+"$moshi_python" summarize.py

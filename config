@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+sources=${SOURCES:-$root/.sources}
+venvs=${VENVS:-$root/.venv}
+python=${PYTHON:-python3}
+torch_index=${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}
+moshi_gpu=${MOSHI_GPU:-0}
+personaplex_gpu=${PERSONAPLEX_GPU:-1}
+moshi_python=$venvs/moshi/bin/python
+personaplex_python=$venvs/personaplex/bin/python
+moshi_source=$sources/moshi
+personaplex_source=$sources/personaplex
+moshi_revision=e6a55d2722a65870ef52a6c9f6ecfc0e90f38362
+personaplex_revision=3428dfd95309a7f3c84fd93259ded0f810d1ff91

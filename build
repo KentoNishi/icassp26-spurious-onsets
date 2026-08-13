@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+source "$(dirname "$0")/config"
+
+mkdir -p "$sources" "$venvs"
+
+if [[ ! -d $moshi_source/.git ]]; then
+    git clone https://github.com/kyutai-labs/moshi.git "$moshi_source"
+fi
+git -C "$moshi_source" fetch origin "$moshi_revision"
+git -C "$moshi_source" checkout --detach "$moshi_revision"
+
+if [[ ! -d $personaplex_source/.git ]]; then
+    git clone https://github.com/NVIDIA/personaplex.git "$personaplex_source"
+fi
+git -C "$personaplex_source" fetch origin "$personaplex_revision"
+git -C "$personaplex_source" checkout --detach "$personaplex_revision"
+
+"$python" -m venv "$venvs/moshi"
+"$moshi_python" -m pip install --upgrade pip
+"$moshi_python" -m pip install torch --index-url "$torch_index"
+"$moshi_python" -m pip install "$moshi_source/moshi" py7zr
+
+"$python" -m venv "$venvs/personaplex"
+"$personaplex_python" -m pip install --upgrade pip
+"$personaplex_python" -m pip install torch --index-url "$torch_index"
+"$personaplex_python" -m pip install \
+    "numpy>=1.26,<2.2" \
+    "safetensors>=0.4.0,<0.5" \
+    "huggingface-hub>=0.24,<0.25" \
+    "einops==0.7" \
+    "sentencepiece==0.2" \
+    "sounddevice==0.5" \
+    "sphn>=0.1.4,<0.2" \
+    "aiohttp>=3.10.5,<3.11"
+"$personaplex_python" -m pip install --no-deps "$personaplex_source/moshi"
