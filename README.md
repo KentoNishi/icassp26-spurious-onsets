@@ -1,6 +1,6 @@
 # Causal Analysis and Mitigation of Spurious Speech Onsets in Full-Duplex Speech LLMs
 
-Code for reproducing the paper's Moshi and PersonaPlex experiments.
+Code for reproducing our Moshi and PersonaPlex experiments.
 
 ## Setup
 
