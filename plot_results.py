@@ -26,7 +26,7 @@ def style(ax, *, grid_axis="both"):
     ax.set_axisbelow(True)
 
 
-def shades(color, count):
+def shades(color, count, hue_shift):
     hue, lightness, saturation = colorsys.rgb_to_hls(*to_rgb(color))
     return [
         colorsys.hls_to_rgb(
@@ -35,7 +35,7 @@ def shades(color, count):
             saturation,
         )
         for hue_offset, lightness_offset in zip(
-            np.linspace(-0.035, 0.035, count),
+            np.linspace(hue_shift - 0.025, hue_shift + 0.025, count),
             np.linspace(-0.18, 0.18, count),
         )
     ]
@@ -50,14 +50,14 @@ def incidence(onsets, horizon=300, runs=40):
 
 def mechanism(results):
     models = (
-        ("Moshi", MOSHI, results[0]),
-        ("PersonaPlex", PERSONAPLEX, results[1]),
+        ("Moshi", MOSHI, -0.06, results[0]),
+        ("PersonaPlex", PERSONAPLEX, 0.06, results[1]),
     )
     fig, axes = plt.subplots(1, 2, figsize=(6.2, 2.15))
     grid = np.linspace(0, 300, 1201)
     prepared = []
 
-    for name, color, result in models:
+    for name, color, hue_shift, result in models:
         runs = result["baseline"]
         rate = result["frame_rate"]
         onsets = [
@@ -77,6 +77,7 @@ def mechanism(results):
             (
                 name,
                 color,
+                hue_shift,
                 rate,
                 x,
                 y,
@@ -92,6 +93,7 @@ def mechanism(results):
         (
             name,
             color,
+            hue_shift,
             rate,
             x,
             y,
@@ -109,7 +111,7 @@ def mechanism(results):
         ax.step(x, y, where="post", color=color, linewidth=2.7, zorder=4)
         ax.plot(grid, geometric, color=color, linewidth=2.0, linestyle=":", zorder=3)
         for trajectory, trajectory_color in zip(
-            trajectories, shades(color, len(trajectories))
+            trajectories, shades(color, len(trajectories), hue_shift)
         ):
             positive = trajectory[trajectory > 0]
             probability_ax.plot(
