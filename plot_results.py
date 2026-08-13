@@ -101,8 +101,8 @@ def mechanism(results):
             probability_max,
         ) = data
         probability_ax = ax.twinx()
-        probability_ax.set_zorder(1)
-        ax.set_zorder(0)
+        probability_ax.set_zorder(0)
+        ax.set_zorder(1)
         ax.patch.set_visible(False)
 
         ax.step(x, y, where="post", color=color, linewidth=2.7, zorder=4)
