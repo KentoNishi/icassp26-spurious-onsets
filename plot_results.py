@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import to_rgb
 from matplotlib.lines import Line2D
+from matplotlib.offsetbox import AnchoredOffsetbox, HPacker, TextArea
 
 
 MOSHI = "#d62728"
@@ -16,15 +17,56 @@ PERSONAPLEX_TRACE = "#2ab7a9"
 GRID = "#dddddd"
 TEXT = "#333333"
 OUT = Path(__file__).parent / "figures"
+WIDTH = 86 / 25.4 * 72  # PDF points: match the manuscript's column width.
+FONT_SIZE = 7
+
+
+def paper_axes(height, boxes):
+    """Place plot interiors in the manuscript's final, top-origin PDF geometry."""
+    plt.rcParams.update(
+        {
+            "font.family": "sans-serif",
+            "font.sans-serif": ["DejaVu Sans"],
+            "pdf.fonttype": 42,
+            "ps.fonttype": 42,
+            "axes.labelpad": 5,
+        }
+    )
+    fig = plt.figure(figsize=(WIDTH / 72, height / 72))
+    axes = [
+        fig.add_axes(
+            (
+                left / WIDTH,
+                (height - bottom) / height,
+                (right - left) / WIDTH,
+                (bottom - top) / height,
+            )
+        )
+        for left, top, right, bottom in boxes
+    ]
+    return fig, axes
+
+
+def model_title(fig, ax, name, height):
+    fig.text(
+        (ax.get_position().x0 + ax.get_position().x1) / 2,
+        1 - 10 / height,
+        name,
+        ha="center",
+        va="baseline",
+        fontsize=FONT_SIZE,
+        fontweight="bold",
+        color=TEXT,
+    )
 
 
 def style(ax, *, grid_axis="both"):
     for spine in ax.spines.values():
         spine.set_color(TEXT)
-        spine.set_linewidth(1.25)
-    ax.tick_params(colors=TEXT, labelsize=10, width=1.15, length=4)
+        spine.set_linewidth(0.65)
+    ax.tick_params(colors=TEXT, labelsize=FONT_SIZE, width=0.65, length=2, pad=2)
     if grid_axis:
-        ax.grid(axis=grid_axis, color=GRID, linewidth=0.85)
+        ax.grid(axis=grid_axis, color=GRID, linewidth=0.5)
     ax.set_axisbelow(True)
 
 
@@ -55,7 +97,7 @@ def mechanism(results):
         ("Moshi", MOSHI, MOSHI_TRACE, results[0]),
         ("PersonaPlex", PERSONAPLEX, PERSONAPLEX_TRACE, results[1]),
     )
-    fig, axes = plt.subplots(1, 2, figsize=(6.2, 2.15))
+    fig, axes = paper_axes(100, ((22, 14, 93, 75), (144, 14, 215, 75)))
     grid = np.linspace(0, 300, 1201)
     prepared = []
 
@@ -74,7 +116,11 @@ def mechanism(results):
         probability_limits = []
         for trajectory in trajectories:
             positive = trajectory[trajectory > 0]
-            probability_limits.extend((positive.min(), positive.max()))
+            if positive.size:
+                probability_limits.extend((positive.min(), positive.max()))
+        # A fully censored, all-zero fixture still has a valid log-axis display.
+        if not probability_limits:
+            probability_limits = [1e-12, 1.0]
         prepared.append(
             (
                 name,
@@ -85,7 +131,7 @@ def mechanism(results):
                 y,
                 geometric,
                 trajectories,
-                np.ceil(10 * max(y.max(), geometric.max())) / 10,
+                max(0.1, np.ceil(10 * max(y.max(), geometric.max())) / 10),
                 10 ** np.floor(np.log10(min(probability_limits))),
                 1.5 * max(probability_limits),
             )
@@ -110,17 +156,18 @@ def mechanism(results):
         ax.set_zorder(1)
         ax.patch.set_visible(False)
 
-        ax.step(x, y, where="post", color=color, linewidth=2.7, zorder=4)
-        ax.plot(grid, geometric, color=color, linewidth=2.0, linestyle=":", zorder=3)
+        ax.step(x, y, where="post", color=color, linewidth=1.6, zorder=4)
+        ax.plot(grid, geometric, color=color, linewidth=1.2, linestyle=":", zorder=3)
         for trajectory, trajectory_color in zip(
             trajectories, shades(trace_color, len(trajectories))
         ):
             positive = trajectory[trajectory > 0]
+            floor = positive.min() if positive.size else probability_min
             probability_ax.plot(
                 np.arange(len(trajectory)) / rate,
-                np.maximum(trajectory, positive.min()),
+                np.maximum(trajectory, floor),
                 color=trajectory_color,
-                linewidth=0.3,
+                linewidth=0.18,
                 alpha=0.55,
                 zorder=1,
             )
@@ -128,40 +175,68 @@ def mechanism(results):
         ax.set_xlim(0, 300)
         ax.set_ylim(0, incidence_max)
         ax.set_yticks(np.arange(0, incidence_max + 0.01, 0.1))
-        ax.set_xlabel("seconds", fontsize=12, color=TEXT)
-        ax.set_ylabel("onset incidence", fontsize=10, color=TEXT, labelpad=1)
-        ax.set_title(name, fontsize=12, color=TEXT, pad=3)
-        for tick_label in ax.get_xticklabels():
-            tick_label.set_horizontalalignment("right")
+        ax.set_xticks([0, 100, 200, 300])
+        model_title(fig, ax, name, 100)
         style(ax, grid_axis=None)
 
         probability_ax.set_yscale("log")
         probability_ax.set_ylim(probability_min, probability_max)
         probability_ax.tick_params(
             colors=TEXT,
-            labelsize=10,
-            width=1.15,
-            length=4,
+            labelsize=FONT_SIZE,
+            width=0.65,
+            length=2,
+            pad=2,
         )
+        probability_ax.minorticks_off()
         probability_ax.spines["right"].set_color(TEXT)
-        probability_ax.spines["right"].set_linewidth(1.25)
+        probability_ax.spines["right"].set_linewidth(0.65)
         probability_ax.patch.set_visible(False)
-        probability_ax.set_ylabel(
-            "onset probability", fontsize=10, color=TEXT, labelpad=1
-        )
         for tick in ax.get_xticks():
-            probability_ax.axvline(tick, color=GRID, linewidth=0.85, zorder=0)
+            probability_ax.axvline(tick, color=GRID, linewidth=0.5, zorder=0)
         for tick in ax.get_yticks():
             probability_ax.plot(
                 [0, 1],
                 [tick / incidence_max] * 2,
                 color=GRID,
-                linewidth=0.85,
+                linewidth=0.5,
                 transform=probability_ax.transAxes,
                 zorder=0,
             )
 
-    fig.subplots_adjust(left=0.10, right=0.87, bottom=0.25, top=0.85, wspace=0.72)
+    footer = HPacker(
+        children=[
+            TextArea(
+                "Onset time (s);",
+                textprops={
+                    "fontsize": FONT_SIZE,
+                    "fontweight": "bold",
+                    "color": TEXT,
+                },
+            ),
+            TextArea(
+                " left: incidence; right: probability",
+                textprops={
+                    "fontsize": FONT_SIZE,
+                    "color": TEXT,
+                },
+            ),
+        ],
+        align="baseline",
+        pad=0,
+        sep=0,
+    )
+    fig.add_artist(
+        AnchoredOffsetbox(
+            loc="lower center",
+            child=footer,
+            frameon=False,
+            pad=0,
+            borderpad=0,
+            bbox_to_anchor=(0.5, 0.005),
+            bbox_transform=fig.transFigure,
+        )
+    )
     fig.savefig(OUT / "mechanism.pdf")
     plt.close(fig)
 
@@ -196,7 +271,7 @@ def counterfactual(results):
     styles = ((0, (1, 1.5)), "-", (0, (5, 2)))
     labels = ("preserve", "balanced", "suppress")
     line_order = (1, 0, 2)
-    fig, axes = plt.subplots(1, 2, figsize=(6.25, 2.1), sharey=True)
+    fig, axes = paper_axes(96, ((36, 14, 133, 59), (148, 14, 242, 59)))
     positions = (0, 0.72)
 
     for model_index, (ax, (name, color, scores, thresholds, balanced)) in enumerate(
@@ -223,7 +298,7 @@ def counterfactual(results):
                 values,
                 y + jitter,
                 color=color,
-                s=13,
+                s=4,
                 alpha=0.85,
                 edgecolors="none",
             )
@@ -233,38 +308,64 @@ def counterfactual(results):
                 thresholds[index],
                 color="#b5b5b5" if index == 1 else TEXT,
                 linestyle=styles[index],
-                linewidth=2.6 if index == 1 else 1.5,
+                linewidth=1.4 if index == 1 else 0.8,
                 zorder=4,
             )
-        ax.set_title(name, fontsize=11, color=TEXT)
+        model_title(fig, ax, name, 96)
         upper = (
-            np.ceil(10 * max(*(values.max() for values in scores), *thresholds)) / 10
+            np.ceil(
+                10
+                * max(
+                    *(values.max() for values in scores if values.size),
+                    *thresholds,
+                    0.1,
+                )
+            )
+            / 10
         )
         ax.set_xlim(-0.015, upper)
         ax.set_ylim(-0.24, 1.02)
         ax.set_yticks(positions, ("spurious", "response"))
-        ax.set_xlabel(r"divergence ($D_t$)", fontsize=11, color=TEXT)
+        ax.set_xticks(np.arange(0, upper + 0.001, 0.2))
         style(ax, grid_axis="x")
         ax.tick_params(axis="y", length=0)
+        if model_index:
+            ax.tick_params(axis="y", labelleft=False)
 
-    axes[0].legend(
+    fig.text(
+        0.5,
+        1 - 81 / 96,
+        "Divergence (Dₜ)",
+        ha="center",
+        va="baseline",
+        fontsize=FONT_SIZE,
+        fontweight="bold",
+        color=TEXT,
+    )
+    fig.legend(
         handles=[
             Line2D(
                 [],
                 [],
                 color="#b5b5b5" if index == 1 else TEXT,
                 linestyle=styles[index],
-                linewidth=2.6 if index == 1 else 1.5,
+                linewidth=1.0,
                 label=label,
             )
             for index, label in enumerate(labels)
         ],
         frameon=False,
-        fontsize=8,
+        fontsize=FONT_SIZE,
+        labelcolor=TEXT,
         handlelength=1.6,
-        loc="lower right",
+        loc="lower left",
+        bbox_to_anchor=(0, 0.5 / 96, 216 / WIDTH, 1),
+        bbox_transform=fig.transFigure,
+        mode="expand",
+        ncol=3,
+        borderaxespad=0,
+        borderpad=0,
     )
-    fig.subplots_adjust(left=0.15, right=0.99, bottom=0.29, top=0.83, wspace=0.12)
     fig.savefig(OUT / "counterfactual.pdf")
     plt.close(fig)
 
@@ -278,15 +379,6 @@ def main():
         json.loads(path.read_text()) for path in (args.moshi, args.personaplex)
     )
     OUT.mkdir(exist_ok=True)
-    plt.rcParams.update(
-        {
-            "font.family": "sans-serif",
-            "font.sans-serif": ["Avenir", "Helvetica", "Arial", "DejaVu Sans"],
-            "pdf.fonttype": 42,
-            "ps.fonttype": 42,
-            "axes.labelpad": 5,
-        }
-    )
     mechanism(results)
     counterfactual(results)
 
