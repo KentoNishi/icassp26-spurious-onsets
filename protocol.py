@@ -349,7 +349,9 @@ def benchmark(probe, shadow, measurements):
 
 
 def save(output, result):
-    (output / "results.json").write_text(json.dumps(result, indent=2) + "\n")
+    temporary = output / "results.json.tmp"
+    temporary.write_text(json.dumps(result, indent=2) + "\n")
+    temporary.replace(output / "results.json")
 
 
 def run(
