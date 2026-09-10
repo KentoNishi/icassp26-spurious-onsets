@@ -18,7 +18,7 @@ from protocol import (
 )
 
 RELEASE_URL = (
-    "https://github.com/KentoNishi/icassp26-spurious-onsets/releases/download/"
+    "https://github.com/KentoNishi/icassp27-spurious-onsets/releases/download/"
     "results-2026-08-13/paper-results-20260813.tar.gz"
 )
 RELEASE_SHA256 = "2107e4a93e34973dadb0ba214b65b509c3f8dececfeefd3f51975fdb2c23519b"
